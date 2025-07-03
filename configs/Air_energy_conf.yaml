@@ -1,0 +1,24 @@
+model:
+  tensor_shape: !!python/tuple [12, 6]
+  h_dim: !!python/tuple [50, 50]
+  act: 'elu'
+  latent_dim: 20
+  noise_sigma: 1.0 #1.0
+  sigma_level: 10 #10
+  embedding_size: 1
+  sigma_func: 'softplus'
+  dropout: 0.0
+  pooling_method: 'sum'
+  skip_connection: false
+
+train:
+  epoch: 1000 #1000
+  lr: 0.005 #0.005
+  batch_size: 128
+  scale_data: true
+  mile_stones: !!python/tuple [0.2, 0.5, 0.8]
+  scheduler: 'cosine'
+  eval_int: 1
+  grad_clip: 2.0
+  grad_clip_norm: 'inf'
+  log_grad_norm: false

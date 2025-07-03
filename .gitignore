@@ -1,0 +1,12 @@
+/.vscode
+/datasets
+/data
+/output
+/FNorm
+/temp
+__pycache__
+/*.txt
+/*.pth
+!requirements.txt
+visualization.py
+draw.py

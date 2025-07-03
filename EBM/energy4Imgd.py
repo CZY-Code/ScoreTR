@@ -1,0 +1,379 @@
+import torch
+import torch.nn as nn
+import math
+import numpy as np
+import torch.autograd as autograd
+from .utils import config_activation, gaussian_repar, gaussian_log_prob, MLP
+from .energy_tensor_cnce import GaussianFourierProjection
+import rff
+INIT_QZ_SIGMA = 0.2
+
+class soft(nn.Module):
+    def __init__(self):
+        super(soft, self).__init__()
+    
+    def forward(self, x, lam):
+        x_abs = x.abs()-lam
+        zeros = x_abs - x_abs
+        n_sub = torch.max(x_abs, zeros)
+        x_out = torch.mul(torch.sign(x), n_sub)
+        return x_out
+    
+class EnergyTDModel(nn.Module):
+    def __init__(
+        self, tensor_shape, rank, h_dim, act, dropout,
+        latent_dim, x_emb_size, sigma_func, 
+        sigma_begin, sigma_end, sigma_level,
+        pooling_method, skip_connection, posdim, 
+        dtype, device,
+        rff_alpha, rff_sigma):
+        super(EnergyTDModel, self).__init__()
+        self.dtype = dtype
+        self.device = device
+        self.tensor_shape = list(tensor_shape)
+        self.norm_factors = torch.tensor(self.tensor_shape, dtype=torch.float32, device=self.device)
+        self.rank = int(rank)
+        self.h_dim = h_dim
+        self.act = act
+        self.dropout = dropout if dropout > 0. else None
+        self.latent_dim = latent_dim
+        self.x_emb_size = x_emb_size
+        self.posdim = posdim
+        if sigma_func == 'exp':
+            self.sigma_func = lambda x: torch.exp(x)
+        elif sigma_func == 'softplus':
+            self.sigma_func = lambda x: nn.functional.softplus(x)
+        else:
+            raise NotImplementedError
+        if sigma_level is not None:
+            self.noise_sigma_list = torch.from_numpy(np.linspace(sigma_begin, sigma_end, sigma_level)).float() #sigma从大到小
+            # self.noise_sigma_list = torch.from_numpy(np.exp(np.linspace(np.log(sigma_begin), np.log(sigma_end), sigma_level))).float() #sigma从大到小
+        else:
+            self.sigmas = None
+
+        self.pooling_method = pooling_method
+        self.skip_connection = skip_connection
+        self.dim = len(tensor_shape)
+        if x_emb_size > 1:
+            self.x_embedding = GaussianFourierProjection(x_emb_size)
+        else:
+            self.register_module('x_embedding', None)
+
+        
+        act = config_activation(self.act)
+        # z encoder
+        z_enc = MLP(input_dim=self.dim * self.rank, output_dim=self.latent_dim,
+                    h_dim=self.h_dim, act=act, dropout=self.dropout,
+                    bn=False, wn=False, sn=False, skip_connection=self.skip_connection)
+        # x encoder
+        emb_size = 1 if self.x_emb_size == 1 else 2 * self.x_emb_size
+        x_enc = MLP(input_dim=emb_size, output_dim=self.latent_dim,
+                    h_dim=self.h_dim, act=act, dropout=self.dropout,
+                    bn=False, wn=False, sn=False, 
+                    skip_connection=self.skip_connection)
+        # ouput layer
+        if self.pooling_method in ['sum', 'attn', 'none']:
+            in_size = self.latent_dim
+        elif self.pooling_method in ['cat', 'sum_cat']:
+            in_size = 2 * self.latent_dim
+        else:
+            raise RuntimeError('Wrong pooling method!')
+        
+        output_layer = MLP(input_dim=in_size, output_dim=emb_size, 
+                           h_dim=self.h_dim, act=act, dropout=self.dropout,
+                           bn=False, wn=False, sn=False, 
+                           skip_connection=self.skip_connection)
+        
+        self.layers = nn.ModuleDict({'z_enc': z_enc, 'x_enc': x_enc, 'output': output_layer})
+        
+        self.U_Net_mu = MLP(input_dim=self.posdim, output_dim=self.rank,
+                        h_dim=self.h_dim, act=act, dropout=self.dropout,
+                        bn=False, wn=False, sn=False, 
+                        skip_connection=self.skip_connection)
+        self.V_Net_mu = MLP(input_dim=self.posdim, output_dim=self.rank,
+                        h_dim=self.h_dim, act=act, dropout=self.dropout,
+                        bn=False, wn=False, sn=False, 
+                        skip_connection=self.skip_connection)
+        self.W_Net_mu = MLP(input_dim=self.posdim, output_dim=self.rank,
+                        h_dim=self.h_dim, act=act, dropout=self.dropout,
+                        bn=False, wn=False, sn=False, 
+                        skip_connection=self.skip_connection)
+        
+        # self.U_Net_sigma = MLP(input_dim=self.posdim, output_dim=self.rank,
+        #                  h_dim=self.h_dim, act=act, dropout=self.dropout,
+        #                  bn=False, wn=False, sn=False, 
+        #                  skip_connection=self.skip_connection)
+        # self.V_Net_sigma = MLP(input_dim=self.posdim, output_dim=self.rank,
+        #                  h_dim=self.h_dim, act=act, dropout=self.dropout,
+        #                  bn=False, wn=False, sn=False, 
+        #                  skip_connection=self.skip_connection)
+        # self.W_Net_sigma = MLP(input_dim=self.posdim, output_dim=self.rank,
+        #                  h_dim=self.h_dim, act=act, dropout=self.dropout,
+        #                  bn=False, wn=False, sn=False, 
+        #                  skip_connection=self.skip_connection)
+        self.encoding = rff.layers.GaussianEncoding(alpha=rff_alpha, sigma=rff_sigma, input_size=1, encoded_size=self.posdim//2)
+        
+        # self.setup_q_z_()
+        self.soft_thres = soft()
+        self.D = torch.zeros(self.tensor_shape).type(self.dtype).reshape(-1).to(self.device)
+        self.S = torch.zeros(self.tensor_shape).type(self.dtype).reshape(-1).to(self.device)
+        self.Vs = torch.zeros(self.tensor_shape).type(self.dtype).reshape(-1).to(self.device)
+
+    def q_z_sigma(self, d):
+        return self.sigma_func(self.q_z_log_sigma[d])
+    
+    def setup_q_z_(self):
+        q_z_mu = []
+        q_z_log_sigma = []
+        for s in self.tensor_shape:
+            q_z_mu.append(nn.Parameter(torch.empty(s, self.rank)))
+            q_z_log_sigma.append(nn.Parameter(torch.empty(s, self.rank)))
+
+        self.q_z_mu = nn.ParameterList(q_z_mu) #Size: [dim1, rank] [dim2, rank] 需要优化的参数
+        self.q_z_log_sigma = nn.ParameterList(q_z_log_sigma)
+
+        for q in self.q_z_mu:
+            torch.nn.init.normal_(q.data, 0., INIT_QZ_SIGMA)
+        for q in self.q_z_log_sigma:
+            torch.nn.init.normal_(q.data, np.log(np.exp(1.0)-1), INIT_QZ_SIGMA)
+        
+    def _input_embedding(self, x):
+        if self.x_embedding is not None:
+            x_exp = self.x_embedding(x)
+        else:
+            x_exp = x.view(-1, 1)
+        return x_exp
+
+    def forward(self, idx, x, sample=True, return_z=False):
+        z = []
+        mu = []
+        # sigma = []
+        train_ind = idx.float() / self.norm_factors
+        mu.append(self.U_Net_mu(self.encoding(train_ind[:,0].unsqueeze(-1))))
+        mu.append(self.V_Net_mu(self.encoding(train_ind[:,1].unsqueeze(-1))))
+        mu.append(self.W_Net_mu(self.encoding(train_ind[:,2].unsqueeze(-1))))
+        # sigma.append(self.U_Net_sigma(self.encoding(train_ind[:,0].unsqueeze(-1))))
+        # sigma.append(self.V_Net_sigma(self.encoding(train_ind[:,1].unsqueeze(-1))))
+        # sigma.append(self.W_Net_sigma(self.encoding(train_ind[:,2].unsqueeze(-1))))
+        for d in range(self.dim):
+            if sample:
+                # z_d = gaussian_repar(mu=self.q_z_mu[d], sigma=self.q_z_sigma(d))[idx[:, d]]
+                # z_d = self.q_z_mu[d][idx[:, d]]
+                # z_d = gaussian_repar(mu=mu[d], sigma=sigma[d])
+                z_d = mu[d]
+            else:
+                # z_d = self.q_z_mu[d][idx[:, d]]
+                z_d = mu[d]
+            z.append(z_d)
+        z_ten = torch.cat(z, -1) #[128, 10] 一个batch 128 个样本，每个样本有self.dim*R = 2 * 5个特征
+
+        # expand input
+        x_exp = self._input_embedding(x)
+        x_exp = self.layers['x_enc'](x_exp)
+        z_exp = self.layers['z_enc'](z_ten)
+
+        if self.pooling_method == 'sum':
+            hidden = z_exp + x_exp
+        elif self.pooling_method == 'attn':
+            hidden = torch.sigmoid(z_exp) * x_exp
+        elif self.pooling_method == 'cat':
+            hidden = torch.cat([z_exp, x_exp], -1)
+        elif self.pooling_method == 'sum_cat':
+            hidden = torch.cat([z_exp + x_exp, x_exp], -1)
+        elif self.pooling_method == 'none':
+            hidden = x_exp
+        else:
+            raise RuntimeError('Wrong pooling method!')
+
+        energy = self.layers['output'](hidden).pow(2).sum(-1) #size [128] 保证energy为正
+        
+        if return_z:
+            return - energy, z 
+        else: #-f(x_i, m_i, t_i, \theta)，由于在softplus函数中包含了以个x=exp^(log(x))函数，因此这里不用求exp了
+            return - energy 
+
+    def dsm(self, idx, x):
+        x.requires_grad_(True)
+        vector = torch.randn_like(x) * self.noise_sigma
+        perturbed_inputs = x + vector
+        log_prob = self.forward(idx, x=perturbed_inputs, sample=True, return_z=False)
+        dlogp =  self.noise_sigma * autograd.grad(log_prob.sum(), perturbed_inputs, create_graph=True)[0]
+        kernel = vector / self.noise_sigma
+        loss = 0.5 * torch.norm(dlogp + kernel, dim=-1) ** 2
+        return loss.mean()
+
+    def anneal_dsm(self, idx, x):
+        random_indices = torch.randint(0, len(self.noise_sigma_list), (x.shape[0],))
+        noise_sigmas = self.noise_sigma_list[random_indices].to(self.device)
+        x.requires_grad_(True)
+        vector = torch.randn_like(x) * noise_sigmas
+        perturbed_inputs = x + vector
+        log_prob = self.forward(idx, x=perturbed_inputs, sample=True, return_z=False)
+        dlogp = noise_sigmas * autograd.grad(log_prob.sum(), perturbed_inputs, create_graph=True)[0]
+        kernel = vector / noise_sigmas
+        loss = 0.5 * torch.norm(dlogp + kernel, dim=-1) ** 2
+        return loss.mean()
+
+    def anneal_dsm_iter(self, idx, x, iter, max_iter):
+        perc = min((iter + 1) / float(max_iter), 1.0)
+        noise_sigmas = self.noise_sigma_list[0] * (1-perc) + self.noise_sigma_list[-1] * perc
+        x.requires_grad_(True)
+        vector = torch.randn_like(x) * noise_sigmas
+        perturbed_inputs = x + vector
+        log_prob = self.forward(idx, x=perturbed_inputs, sample=True, return_z=False)
+        dlogp = noise_sigmas * autograd.grad(log_prob.sum(), perturbed_inputs, create_graph=True)[0]
+        kernel = vector / noise_sigmas
+        loss = 0.5 * torch.norm(dlogp + kernel, dim=-1) ** 2
+        return loss.mean()
+    
+    def anneal_dsm_Sparse(self, idx, x, iter, max_iter):
+        mu = 2.0 #0.5 2.0
+        gamma = 0.08 #0.02 0.08
+        i, j, k = idx[:, 0], idx[:, 1], idx[:, 2]
+        linear_indices = i * (self.tensor_shape[1] * self.tensor_shape[2]) + j * self.tensor_shape[2] + k
+        # X_Out = self.grid_search_posterior(idx, x_range=[0.0, 1.0], epsilon=1.0/255.0).detach()
+        X_Out, log_prob_out = self.grid_search_posterior4train(idx, x, epsilon=1.0/255.0, delta=0.329) #delta=0.329
+
+        # if iter == 0:
+        #     self.S[linear_indices] = x-X_Out.clone().detach()
+        #     self.Vs[linear_indices] = self.S.clone().detach()[linear_indices]
+        # self.Vs[linear_indices] = self.soft_thres(self.S[linear_indices] + self.D[linear_indices] / mu, gamma / mu)
+        # self.S[linear_indices] = (2*(x - X_Out.clone().detach()) + mu * self.Vs[linear_indices] - self.D[linear_indices])/(2 + mu)
+        # self.D[linear_indices] = (self.D[linear_indices] + mu * (self.S[linear_indices]  - self.Vs[linear_indices])).clone().detach()
+        
+        S = self.soft_thres(x - X_Out.clone().detach(), gamma / mu)
+
+        random_indices = torch.randint(0, len(self.noise_sigma_list), (x.shape[0],))
+        noise_sigmas = self.noise_sigma_list[random_indices].to(self.device)
+        # perc = min((iter + 1) / float(max_iter), 1.0)
+        # noise_sigmas = self.noise_sigma_list[0] * (1-perc) + self.noise_sigma_list[-1] * perc
+
+        # x_clean = (x - self.S[linear_indices]).clone().detach()
+        x_clean = (x - S).clone().detach()
+        x_clean.requires_grad_(True)
+        vector = torch.randn_like(x_clean) * noise_sigmas
+        perturbed_inputs = x_clean + vector
+        log_prob = self.forward(idx, x=perturbed_inputs, sample=True, return_z=False)
+        dlogp = noise_sigmas * autograd.grad(log_prob.sum(), perturbed_inputs, create_graph=True)[0]
+        kernel = vector / noise_sigmas
+        lossEnergy = (0.5 * torch.norm(dlogp + kernel, dim=-1) ** 2).mean()
+
+        idx_epslion = torch.normal(mean=idx.float(), std=0.5*torch.ones_like(idx)) #1.0
+        log_prob_eps = self.forward(idx_epslion, x=X_Out, sample=True, return_z=False)
+        # lossEps = torch.norm(log_prob_out.detach()-log_prob_eps, p='fro').mean()
+        lossEps = -log_prob_eps.mean()
+
+        return lossEnergy + lossEps
+
+
+    def forward_gaussian(self, idx, perturbed_inputs, iter):
+        # sigma_max = 55/255
+        # sigma_min = 5/255
+        # perc = min((iter + 1) / float(50), 1.0)
+        # sigma = sigma_max * perc + sigma_min * (1 - perc)
+        sigma = 0.2 #TODO
+        variance = sigma ** 2
+        perturbed_inputs.requires_grad_(True)
+        log_prob = self.forward(idx, x=perturbed_inputs, sample=True, return_z=False) 
+        output_f = variance * autograd.grad(log_prob.sum(), perturbed_inputs, create_graph=True)[0]
+        recon = output_f + perturbed_inputs
+        return recon
+
+    @torch.no_grad()
+    def predict(self, idx=None, x_range=None, batch=1e4, x0=None, epsilon=None, step_lr=None, n_steps=100):
+        if idx is not None:
+            idx_array, idx_list, idx_full = [idx], None, None
+        else:
+            idx_array, idx_list, idx_full = self._split_idx(batch)
+
+        tensor_predict = []
+        chunk_num = len(idx_array) #1
+
+        for n in range(chunk_num):
+            if epsilon is None:
+                if x0 is None:
+                    x0_n = None
+                else:
+                    x0_n = x0[idx_list[n]]
+                x_hat = self.langevin_sample_posterior(idx=idx_array[n], x0=x0_n, n_steps=n_steps, step_lr=step_lr)
+            else:  # use grid search for MAP
+                x_hat = self.grid_search_posterior(idx=idx_array[n], x_range=x_range, epsilon=epsilon)
+
+            tensor_predict.append(x_hat)
+
+        tensor_predict = torch.cat(tensor_predict).squeeze()
+        if idx is not None:
+            return tensor_predict
+
+        dtype = self.q_z_mu[0].dtype
+        tensor_full = torch.ones(self.tensor_shape, dtype=dtype, device=self.device)
+        tensor_full[idx_full] = tensor_predict
+        return tensor_full
+    
+    # step_lr 和 self.sigma[-1]的数量级需要是正相关的
+    def langevin_sample_posterior(self, idx, x0=None, n_steps=100, step_lr=0.01):
+        def energy(x):
+            log_prob = self.forward(idx, x, sample=False, return_z=False)
+            return log_prob.sum()
+
+        if x0 is None:
+            x0 = torch.rand(idx.shape[0], device=self.device, dtype=torch.float32)
+        x0.requires_grad_(True)
+        for _ in range(n_steps):
+            score = autograd.grad(energy(x0), x0)[0].detach()
+            x0.data = x0.data + step_lr / 2 * score + math.sqrt(step_lr) * torch.randn_like(score)
+        return x0
+
+    def grid_search_posterior(self, idx, x_range, epsilon): #x_range=[-0.5, 1.1] epsilon=1e-3
+        assert x_range is not None, "Please specify sample range!"
+        x_grid = torch.arange(start=x_range[0], end=x_range[1] + epsilon / 2., step=epsilon,
+                              device=self.device, dtype=torch.float32).view(-1, 1).repeat(1, len(idx))  # Grid x Batch
+        
+        def unnorm_log_prob(x):
+            neg_energy = self.forward(idx, x, sample=False, return_z=False)
+            return neg_energy
+
+        u_log_prob = torch.vmap(unnorm_log_prob, in_dims=0)(x_grid) #[1601, 100]
+        idx_est = torch.argmax(u_log_prob, dim=0)
+        x_opt = torch.gather(x_grid, 0, idx_est.unsqueeze(0)).squeeze()
+
+        return x_opt
+
+    def grid_search_posterior4train(self, idx, x, epsilon, delta=0.329):
+        assert x is not None, "Please specify center value!"
+        x_range = torch.arange(start=-delta, end=delta + epsilon / 2., step=epsilon,
+                              device=self.device, dtype=torch.float32).view(-1, 1).repeat(1, len(idx)) 
+        x_grid = x + x_range
+        
+        def unnorm_log_prob(x):
+            neg_energy = self.forward(idx, x, sample=False, return_z=False)
+            return neg_energy
+
+        u_log_prob = torch.vmap(unnorm_log_prob, in_dims=0)(x_grid) #[1601, 100]
+        # idx_est = torch.argmax(u_log_prob, dim=0)
+        log_prob, idx_est = torch.max(u_log_prob, dim=0)
+        x_opt = torch.gather(x_grid, 0, idx_est.unsqueeze(0)).squeeze()
+
+        return x_opt, log_prob
+
+    def _split_idx(self, batch):
+        dtype = self.q_z_mu[0].dtype
+
+        tensor_full = torch.ones(self.tensor_shape, dtype=dtype, device=self.device)
+        idx = torch.nonzero(tensor_full)
+        if idx.shape[0] < batch:
+            chunk_num = 1
+        else:
+            chunk_num = int(idx.shape[0] / batch)
+        idx_array = torch.chunk(idx, chunk_num)
+
+        idx_list_ = torch.nonzero(tensor_full, as_tuple=True)
+        idx_list_ = [torch.chunk(i, chunk_num) for i in idx_list_]
+        idx_list = []
+        for i in range(chunk_num):
+            idx_cache = []
+            for d in range(tensor_full.ndim):
+                idx_cache.append(idx_list_[d][i])
+            idx_list.append(tuple(idx_cache))
+
+        return idx_array, idx_list, idx_list_

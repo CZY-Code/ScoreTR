@@ -1,0 +1,26 @@
+model:
+  tensor_shape: !!python/tuple [8, 8]
+  h_dim: !!python/tuple [128, 128] #[128, 128]
+  act: 'relu'
+  latent_dim: 128 #128
+  x_emb_size: 1
+  t_emb_size: 8 #8
+  sigma_begin: 0.1 #1.0
+  sigma_end: 0.001 #0.001
+  sigma_level: 10 #10
+  sigma_func: 'softplus'
+  dropout: 0.0
+  pooling_method: 'cat'
+  skip_connection: true
+
+train:
+  epoch: 500 #500
+  lr: 0.001 #0.001
+  weight_decay: 0.0
+  batch_size: 256
+  mile_stones: !!python/tuple [0.2, 0.5, 0.8]
+  scheduler: 'cosine'
+  eval_int: 50
+  grad_clip: 5.0
+  grad_clip_norm: 'inf'
+  log_grad_norm: false

@@ -1,0 +1,29 @@
+model:
+  h_dim: !!python/tuple [384, 384] #[384, 384] [256, 256] [512, 512]
+  act: 'relu'
+  latent_dim: 64 #64
+  sigma_begin: 0.1 #0.1
+  sigma_end: 0.001 #0.001
+  sigma_level: 10 #10
+  x_emb_size: 1
+  sigma_func: 'softplus'
+  dropout: 0.0
+  pooling_method: 'cat' #'cat'
+  skip_connection: true
+  posdim: 128 #128
+  rank: 128 #256
+  rff_alpha: 1.0 #1.0
+  rff_sigma: 4.0 #4
+
+train:
+  epoch: 100 #50
+  lr: 0.001 #0.001
+  weight_decay: 0.0
+  batch_size: 8192 #8192
+  scale_data: true
+  mile_stones: !!python/tuple [0.5, 0.7, 0.9]
+  scheduler: 'cosine'
+  eval_int: 20 #5
+  grad_clip: 2.0
+  grad_clip_norm: 'inf'
+  log_grad_norm: false
