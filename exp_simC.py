@@ -93,9 +93,10 @@ class Trainer:
         # idx_list = [[1, 2], [2, 1], [1, 1], [2, 2]]
         idx_list = [[1, 2], [2, 3], [3, 4], [4, 5]]
         color_list = [['#bccbe8', '#1d73b6'], ['#c6dfb8', '#24a645'], ['#fcd5b4', '#f27830'], ['#d7cae4','#8768a6']]
-        # 创建图表和子图（建议显式设置背景色）
-        fig, ax = plt.subplots(figsize=(4, 3))
-        ax.set_facecolor('#f0f0f0')  #背景
+        # 创建图表和子图，显式设置背景色
+        fig, ax = plt.subplots(figsize=(4, 3)) #4,3
+        fontsize = 16
+        ax.set_facecolor('#f0f0f0')  #背景颜色
         for (begin, end) in self.test_inter:
             ax.axvspan(xmin=begin, xmax=end, facecolor='#cdc9c1', alpha=0.5)
 
@@ -112,10 +113,12 @@ class Trainer:
             ax.plot(time, true_val, color=color_list[i][0], alpha=1.0, linewidth=2, label=rf'${{x}}_{{{idx[0]},{idx[1]}}}$')
             ax.plot(time, pred_val, color=color_list[i][1], alpha=0.8, linewidth=2, label=rf'$\tilde{{x}}_{{{idx[0]},{idx[1]}}}$')
 
-            ax.xaxis.set_major_locator(ticker.MultipleLocator(0.2)) # x轴主网格间隔
-            ax.yaxis.set_major_locator(ticker.MultipleLocator(2.0))
-            ax.set_xlabel('Time', fontsize=10)
-            # ax.set_ylabel('Density', fontsize=10)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(0.2)) # x轴主网格间隔
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(2.0))
+        ax.tick_params(axis='x', labelsize=fontsize)  # x轴刻度数值字体大小
+        ax.tick_params(axis='y', labelsize=fontsize)  # y轴刻度数值字体大小
+        ax.set_xlabel('Time', fontsize=fontsize)
+        # ax.set_ylabel('Density', fontsize=fontsize)
 
         handles, labels = ax.get_legend_handles_labels()
         train_patch = Rectangle((0, 0), 1, 1, facecolor='#f0f0f0', label='Train')
@@ -123,20 +126,14 @@ class Trainer:
         handles.extend([train_patch, test_patch])
         labels.extend(['Train', 'Test'])
 
-        # ax.legend(handles=handles, labels=labels, fontsize=9, loc='upper left')  # 建议指定图例位置
+        # ax.set_title("MR=0.2", fontsize=fontsize, pad=0)
+        ax.legend(handles=handles, labels=labels, fontsize=fontsize, loc='upper center', bbox_to_anchor=(0.5, 1.5), ncol=5)
         ax.grid(True, linestyle='--', alpha=0.8, color='#ffffff')  # 降低网格透明度
-        fig.tight_layout() 
-        
-        # fig_legend = plt.figure(figsize=(3, 1))
-        # ax_legend = fig_legend.add_subplot(111)
-        # ax_legend.axis('off')  # 隐藏坐标轴
-        # ax_legend.legend(handles, labels, fontsize=9, loc='center', ncol=10)
-        # fig_legend.savefig('legend.png', dpi=300, bbox_inches='tight')
-        
+        fig.tight_layout()
+        plt.savefig('MR0.6.png', dpi=300, bbox_inches='tight')
         plt.show()
 
 
-        
 def main_run_func(args, conf):
     data_loader, test_dt, test_list = get_continuous_data(batch_size=conf.train.batch_size, shape = conf.model.tensor_shape)
 

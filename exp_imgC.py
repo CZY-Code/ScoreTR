@@ -143,7 +143,7 @@ def main():
     parser.add_argument('--SR', type=float, default=0.1, help='Masking ratio')
     parser.add_argument('--type', type=str, default='MSI', help='datatype')
     parser.add_argument('--name', type=str, default='toys', help='name')
-    parser.add_argument('--dev', type=int, default=0, help='CUDA ID')
+    parser.add_argument('--dev', type=int, default=2, help='CUDA ID')
     parser.add_argument('--sigma', type=float, default=0.1, help='sigma max')
     parser.add_argument('--level', type=int, default=10, help='num level')
     args = parser.parse_args()
@@ -240,6 +240,8 @@ def main():
             rff_alpha = conf.model.rff_alpha,
             rff_sigma = conf.model.rff_sigma
         )
+    print('Model params: ', sum(param.numel() for param in model.parameters())/1e6, 'M')
+    
     if torch.cuda.is_available():
         model = model.to(device)
     

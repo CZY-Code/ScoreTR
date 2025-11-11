@@ -255,6 +255,7 @@ def main():
             rff_alpha = conf.model.rff_alpha,
             rff_sigma = conf.model.rff_sigma
         )
+    print('Model params: ', sum(param.numel() for param in model.parameters())/1e6, 'M')
     if torch.cuda.is_available():
         model = model.to(device)
 

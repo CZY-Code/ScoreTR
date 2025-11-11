@@ -173,6 +173,7 @@ def main_run_func(args, conf, folds):
             pooling_method=conf.model.pooling_method,
             skip_connection=conf.model.skip_connection
         )
+    print('Model params: ', sum(param.numel() for param in model.parameters())/1e6, 'M')
     if torch.cuda.is_available():
         model = model.cuda()
 
