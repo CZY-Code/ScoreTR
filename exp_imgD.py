@@ -11,7 +11,7 @@ import json
 from skimage.metrics import peak_signal_noise_ratio, normalized_root_mse, structural_similarity
 
 # from EBM.score4Imgd import ScoreTDModel
-from EBM.energy4Imgd import EnergyTDModel
+from EBM.energy4Imgd import ScoreMatching
 from utils.ob_data import tensor2data
 from utils.datautil import load_grayscale_images_from_directory, read_yuv_video
 from utils.noiseFun import add_noise
@@ -233,7 +233,7 @@ def main():
         #     rff_sigma=conf.model.rff_sigma
         # )
     else:
-        model = EnergyTDModel(
+        model = ScoreMatching(
             tensor_shape = [H, W, C],
             rank = conf.model.rank,
             h_dim = conf.model.h_dim,

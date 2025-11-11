@@ -19,7 +19,7 @@ class soft(nn.Module):
         x_out = torch.mul(torch.sign(x), n_sub)
         return x_out
     
-class EnergyTDModel(nn.Module):
+class ScoreMatching(nn.Module):
     def __init__(
         self, tensor_shape, rank, h_dim, act, dropout,
         latent_dim, x_emb_size, sigma_func, 
@@ -27,7 +27,7 @@ class EnergyTDModel(nn.Module):
         pooling_method, skip_connection, posdim, 
         dtype, device,
         rff_alpha, rff_sigma):
-        super(EnergyTDModel, self).__init__()
+        super(ScoreMatching, self).__init__()
         self.dtype = dtype
         self.device = device
         self.tensor_shape = list(tensor_shape)

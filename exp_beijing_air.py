@@ -1,3 +1,4 @@
+import os
 import json
 import torch
 import argparse
@@ -5,9 +6,8 @@ import numpy as np
 import yaml
 from omegaconf import OmegaConf
 from tqdm import tqdm
-import os
 
-from EBM.energy4Air import EnergyTDTime
+from EBM.energy4Air import ScoreMatchingTime
 from utils.ob_data import get_air_data
 
 
@@ -138,7 +138,7 @@ def main_run_func(args, conf, folds):
     data_loader = data_loader[folds]
 
     # model
-    model = EnergyTDTime(
+    model = ScoreMatchingTime(
         tensor_shape=conf.model.tensor_shape,
         rank=args.rank,
         h_dim=conf.model.h_dim,
@@ -176,7 +176,6 @@ def main():
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     os.environ['CUDA_VISIBLE_DEVICES'] = f"{args.dev}"
-    device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
 
     # read config
     conf_path = './configs/Air_energy_conf.yaml'

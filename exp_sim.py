@@ -10,7 +10,7 @@ import matplotlib.ticker as ticker
 from scipy.stats import beta, gaussian_kde, norm, expon
 from scipy.integrate import fixed_quad
 
-from EBM.energy4Sim import EnergyTDIdx
+from EBM.energy4Sim import ScoreMatchingIdx
 from utils.ob_data import get_sim_data
 dtype = torch.cuda.FloatTensor
 
@@ -163,7 +163,7 @@ def main_run_func(args, conf):
     if args.score:
         pass
     else:
-        model = EnergyTDIdx(
+        model = ScoreMatchingIdx(
         tensor_shape = conf.model.tensor_shape,
         rank = args.rank,
         h_dim = conf.model.h_dim,

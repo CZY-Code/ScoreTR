@@ -1,7 +1,17 @@
 # Score-Based Model for Low-Rank Tensor Recovery
 
-## Installation
+<div align="center">
 
+[![arXiv](https://img.shields.io/badge/arXiv%20paper-2506.22295-b31b1b.svg)](https://arxiv.org/abs/2506.22295)&nbsp;
+
+</div>
+
+## Overview
+<p align="center">
+<img src="assets/overview.jpg" width=50%>
+<p>
+
+## Installation
 1. Download source code and dataset:
     * `git clone https://github.com/CZY-Code/ScoreTR.git`
     * Download datasets
@@ -40,7 +50,7 @@ Unzip and move dataset into ROOT/data
     
 ## Acknowledgement
 This implementation is based on / inspired by:
-* [EnergyTD](https://github.com/taozerui/energy_td)
+* [ScoreTR](https://github.com/taozerui/energy_td)
 * [reproducible-tensor-completion-state-of-the-art](https://github.com/zhaoxile/reproducible-tensor-completion-state-of-the-art)
 * [M $^2$ DMT](https://github.com/jicongfan/Multi-Mode-Deep-Matrix-and-Tensor-Factorization)
 * [HLRTF](https://github.com/YisiLuo/HLRTF)

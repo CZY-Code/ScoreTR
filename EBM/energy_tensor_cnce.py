@@ -21,12 +21,12 @@ class GaussianFourierProjection(nn.Module):
         return torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1)
 
 
-class _EnergyTDBase(nn.Module):
+class _ScoreTRBase(nn.Module):
     def __init__(
         self, tensor_shape, rank, h_dim, act, dropout,
         latent_dim, embedding_size, nu, sigma_func, pooling_method,
         skip_connection, posdim):
-        super(_EnergyTDBase, self).__init__()
+        super(_ScoreTRBase, self).__init__()
         self.tensor_shape = list(tensor_shape)
         self.norm_factors = torch.tensor(self.tensor_shape, dtype=torch.float32).cuda()
         self.rank = int(rank)
@@ -244,7 +244,7 @@ class _EnergyTDBase(nn.Module):
         raise NotImplementedError
 
 
-class EnergyTDContinuous(_EnergyTDBase):
+class ScoreTRContinuous(_ScoreTRBase):
     def __init__(
         self,
         tensor_shape: List[int],
@@ -262,7 +262,7 @@ class EnergyTDContinuous(_EnergyTDBase):
         posdim: int = 32,
         dtype = None
     ):
-        super(EnergyTDContinuous, self).__init__(
+        super(ScoreTRContinuous, self).__init__(
             tensor_shape=tensor_shape,
             rank=rank,
             h_dim=h_dim,

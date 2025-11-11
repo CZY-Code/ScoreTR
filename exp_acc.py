@@ -1,5 +1,4 @@
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 import json
 import torch
 import argparse
@@ -8,7 +7,7 @@ import yaml
 from omegaconf import OmegaConf
 from tqdm import tqdm
 
-from EBM.energy4Acc import EnergyTDIdx
+from EBM.energy4Acc import ScoreMatchingIdx
 from utils.ob_data import get_acc_data
 dtype = torch.cuda.FloatTensor
 
@@ -140,7 +139,7 @@ def main_run_func(args, conf, folds):
 
     # model
     if args.score:
-        # model = ScoreTDIdx(
+        # model = ScoreEstimationIdx(
         #     tensor_shape=conf.model.tensor_shape,
         #     rank=args.rank,
         #     h_dim=conf.model.h_dim,
@@ -159,7 +158,7 @@ def main_run_func(args, conf, folds):
         # )
         pass
     else:
-        model = EnergyTDIdx(
+        model = ScoreMatchingIdx(
             tensor_shape=conf.model.tensor_shape,
             rank=args.rank,
             h_dim=conf.model.h_dim,

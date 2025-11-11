@@ -10,7 +10,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 import matplotlib.ticker as ticker
 
-from EBM.energy4SimC import EnergyTDTime
+from EBM.energy4SimC import ScoreMatchingTime
 from utils.ob_data import get_continuous_data
 dtype = torch.cuda.FloatTensor
 
@@ -141,7 +141,7 @@ def main_run_func(args, conf):
     if args.score:
         pass
     else:
-        model = EnergyTDTime(
+        model = ScoreMatchingTime(
         tensor_shape = conf.model.tensor_shape,
         rank = args.rank,
         h_dim = conf.model.h_dim,

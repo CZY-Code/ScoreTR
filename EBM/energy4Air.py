@@ -10,12 +10,12 @@ from .utils import config_activation, gaussian_repar, gaussian_log_prob, MLP
 from .energy_tensor_cnce import GaussianFourierProjection
 INIT_QZ_SIGMA = 0.2
 
-class _EnergyTDBase(nn.Module):
+class _ScoreTRBase(nn.Module):
     def __init__(
         self, tensor_shape, rank, h_dim, act, dropout,
         latent_dim, embedding_size, sigma_func, pooling_method,
         skip_connection):
-        super(_EnergyTDBase, self).__init__()
+        super(_ScoreTRBase, self).__init__()
         self.tensor_shape = list(tensor_shape)
         self.rank = int(rank)
         self.h_dim = h_dim
@@ -180,7 +180,7 @@ class _EnergyTDBase(nn.Module):
         return idx_array, idx_list, idx_list_
 
 
-class EnergyTDTime(_EnergyTDBase):
+class ScoreMatchingTime(_ScoreTRBase):
     def __init__(
         self,
         tensor_shape: List[int],
@@ -196,7 +196,7 @@ class EnergyTDTime(_EnergyTDBase):
         pooling_method: str = 'sum',
         skip_connection: bool = False,
     ):
-        super(EnergyTDTime, self).__init__(
+        super(ScoreMatchingTime, self).__init__(
             tensor_shape=tensor_shape,
             rank=rank,
             h_dim=h_dim,

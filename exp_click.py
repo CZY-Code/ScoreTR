@@ -7,7 +7,7 @@ import yaml
 from omegaconf import OmegaConf
 from tqdm import tqdm
 
-from EBM.energy4Click import EnergyTDTime
+from EBM.energy4Click import ScoreMatchingTime
 from utils.ob_data import get_click_data
 
 
@@ -132,7 +132,7 @@ def main_run_func(args, conf, folds):
     data_loader = data_loader[folds]
 
     # model
-    model = EnergyTDTime(
+    model = ScoreMatchingTime(
         tensor_shape = conf.model.tensor_shape,
         rank = args.rank,
         h_dim = conf.model.h_dim,

@@ -10,7 +10,7 @@ from .energy_tensor_cnce import GaussianFourierProjection
 INIT_QZ_SIGMA = 0.2
 
 
-class EnergyTDIdx(nn.Module):
+class ScoreMatchingIdx(nn.Module):
     def __init__(
         self,
         tensor_shape: List[int],
@@ -26,7 +26,7 @@ class EnergyTDIdx(nn.Module):
         pooling_method: str = 'sum',
         skip_connection: bool = False,
     ):
-        super(EnergyTDIdx, self).__init__()
+        super(ScoreMatchingIdx, self).__init__()
         self.tensor_shape = list(tensor_shape)
         self.rank = int(rank)
         self.h_dim = h_dim
