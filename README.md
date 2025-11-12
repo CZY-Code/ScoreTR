@@ -8,7 +8,7 @@
 
 ## Overview
 <p align="center">
-<img src="assets/overview.jpg" width=50%>
+<img src="assets/overview.jpg" width=60%>
 <p>
 
 ## Installation
@@ -45,14 +45,14 @@ Unzip and move dataset into ROOT/data
         │   |- MSIs
         |   |- Videos
 
-## Run and test
+## Train and Test
 * run `./run_scoreTR.sh`
     
 ## Acknowledgement
 This implementation is based on / inspired by:
-* [ScoreTR](https://github.com/taozerui/energy_td)
+* [EnergyTD](https://github.com/taozerui/energy_td)
 * [reproducible-tensor-completion-state-of-the-art](https://github.com/zhaoxile/reproducible-tensor-completion-state-of-the-art)
-* [M $^2$ DMT](https://github.com/jicongfan/Multi-Mode-Deep-Matrix-and-Tensor-Factorization)
+* [M<sup>2</sup>DMT](https://github.com/jicongfan/Multi-Mode-Deep-Matrix-and-Tensor-Factorization)
 * [HLRTF](https://github.com/YisiLuo/HLRTF)
 * [Continuous-Tensor-Toolbox](https://github.com/YisiLuo/Continuous-Tensor-Toolbox)
 * [DeepTensor](https://github.com/vishwa91/DeepTensor)
