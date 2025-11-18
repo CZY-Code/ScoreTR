@@ -126,19 +126,19 @@ class Trainer:
             
             # 创建图表和子图（建议显式设置背景色）
             fig, ax = plt.subplots(figsize=(4, 3))
-            fontsize = 16
+            fontsize = 22
             # 设置图表整体背景色（外围区域）
             # fig.patch.set_facecolor('#ffffff')  # 白色 
             # 设置绘图区域（坐标轴内）的背景色（可选，增强层次感）
             ax.set_facecolor('#f0f0f0')  # 浅灰背景
 
-            ax.plot(x_range, true_density, color='#24a645', linewidth=2, label=r'Truth')
+            ax.plot(x_range, true_density, color='#24a645', linewidth=3, label=r'Truth')
             ax.fill_between(x_range, true_density, alpha=0.2, color='#c6dfb8')
 
-            ax.plot(x_range, val_density, color='#f27830', linewidth=2, label=r'Obs')
+            ax.plot(x_range, val_density, color='#f27830', linewidth=3, label=r'Obs')
             ax.fill_between(x_range, val_density, alpha=0.2, color='#fcd5b4')
 
-            ax.plot(x_hat_tot, pred_prob, color='#1d73b6', linewidth=2, label='ScoreTR')
+            ax.plot(x_hat_tot, pred_prob, color='#1d73b6', linewidth=3, label='ScoreTR')
             ax.fill_between(x_hat_tot, pred_prob, alpha=0.2, color='#bccbe8')
 
             ax.xaxis.set_major_locator(ticker.MultipleLocator(1.0)) # x轴主网格间隔
@@ -149,7 +149,8 @@ class Trainer:
             ax.set_ylabel('Density', fontsize=fontsize)
 
             # 其他设置
-            ax.legend(fontsize=fontsize, loc='upper right')  # 建议指定图例位置
+            # ax.legend(fontsize=fontsize, loc='upper right')  # 建议指定图例位置
+            # ax.legend(fontsize=fontsize, loc='upper center', bbox_to_anchor=(0.5, 1.5), ncol=3)
             ax.grid(True, linestyle='--', alpha=0.8, color='#ffffff')  # 降低网格透明度
             fig.tight_layout()
             plt.savefig(f'{self.dist}.png', dpi=300, bbox_inches='tight')

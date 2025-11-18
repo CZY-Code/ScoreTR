@@ -50,6 +50,7 @@ class Trainer:
             bar.set_postfix({'Loss': self.current_loss})
 
             is_eval = epoch % self.eval_interval == 0 or epoch == self.conf.train.epoch - 1
+            is_eval = epoch == self.conf.train.epoch - 1
 
             if is_eval:
                 self.eval_epoch('Test')
@@ -95,7 +96,7 @@ class Trainer:
         color_list = [['#bccbe8', '#1d73b6'], ['#c6dfb8', '#24a645'], ['#fcd5b4', '#f27830'], ['#d7cae4','#8768a6']]
         # 创建图表和子图，显式设置背景色
         fig, ax = plt.subplots(figsize=(4, 3)) #4,3
-        fontsize = 16
+        fontsize = 22
         ax.set_facecolor('#f0f0f0')  #背景颜色
         for (begin, end) in self.test_inter:
             ax.axvspan(xmin=begin, xmax=end, facecolor='#cdc9c1', alpha=0.5)
@@ -110,11 +111,11 @@ class Trainer:
             true_val = x_val.cpu().numpy() * scale
             time = x_time.cpu().numpy()
 
-            ax.plot(time, true_val, color=color_list[i][0], alpha=1.0, linewidth=2, label=rf'${{x}}_{{{idx[0]},{idx[1]}}}$')
-            ax.plot(time, pred_val, color=color_list[i][1], alpha=0.8, linewidth=2, label=rf'$\tilde{{x}}_{{{idx[0]},{idx[1]}}}$')
+            ax.plot(time, true_val, color=color_list[i][0], alpha=1.0, linewidth=3, label=rf'${{x}}_{{{idx[0]},{idx[1]}}}$')
+            ax.plot(time, pred_val, color=color_list[i][1], alpha=0.8, linewidth=3, label=rf'$\tilde{{x}}_{{{idx[0]},{idx[1]}}}$')
 
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(0.2)) # x轴主网格间隔
-        ax.yaxis.set_major_locator(ticker.MultipleLocator(2.0))
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(0.4)) # x轴主网格间隔
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(4.0))
         ax.tick_params(axis='x', labelsize=fontsize)  # x轴刻度数值字体大小
         ax.tick_params(axis='y', labelsize=fontsize)  # y轴刻度数值字体大小
         ax.set_xlabel('Time', fontsize=fontsize)
@@ -127,7 +128,7 @@ class Trainer:
         labels.extend(['Train', 'Test'])
 
         # ax.set_title("MR=0.2", fontsize=fontsize, pad=0)
-        ax.legend(handles=handles, labels=labels, fontsize=fontsize, loc='upper center', bbox_to_anchor=(0.5, 1.5), ncol=5)
+        # ax.legend(handles=handles, labels=labels, fontsize=fontsize, loc='upper center', bbox_to_anchor=(0.5, 1.5), ncol=5)
         ax.grid(True, linestyle='--', alpha=0.8, color='#ffffff')  # 降低网格透明度
         fig.tight_layout()
         plt.savefig('MR0.6.png', dpi=300, bbox_inches='tight')

@@ -123,11 +123,11 @@ class ScoreMatchingIdx(nn.Module):
             hidden = torch.cat([z_exp + x_exp, x_exp], -1)
         else:
             raise RuntimeError('Wrong pooling method!')
-        energy = self.layers['output'](hidden).pow(2).sum(-1) #size [128] 保证energy为正
+        energy = self.layers['output'](hidden).pow(2).sum(-1) #size [128] Ensure that energy is positive
 
         if return_z:
             return - energy, z 
-        else: #-f(x_i, m_i, t_i, \theta)，由于在softplus函数中包含了以个x=exp^(log(x))函数，因此这里不用求exp了
+        else: #-f(x_i, m_i, t_i, \theta)，由于在softplus函数中包含了x=exp^(log(x))函数，因此这里不用求exp了
             return - energy 
 
     def dsm(self, idx, x):

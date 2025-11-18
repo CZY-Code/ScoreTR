@@ -136,7 +136,6 @@ def get_alog_data(data_path, batch_size=int(2**10)):
         train_ind, train_val = load_txt(os.path.join(data_path, f'alog/train-fold-{i+1}.txt'))
         test_ind, test_val = load_txt(os.path.join(data_path, f'alog/test-fold-{i+1}.txt'))
 
-        # train: (10538, 3) (10538,) test: (2634, 3) (2634,)
         train_ind = torch.tensor(train_ind, dtype=torch.int32)
         test_ind = torch.tensor(test_ind, dtype=torch.int32)
 
