@@ -8,14 +8,14 @@ import rff
 INIT_QZ_SIGMA = 0.2
 
 
-class ScoreTDModel(nn.Module):
+class ScoreEstimation(nn.Module):
     def __init__(
         self, tensor_shape, rank, h_dim, act, dropout,
         latent_dim, x_emb_size, sigma_func, 
         sigma_begin, sigma_end, sigma_level,
         pooling_method, skip_connection, posdim, dtype,
         rff_alpha, rff_sigma):
-        super(ScoreTDModel, self).__init__()
+        super(ScoreEstimation, self).__init__()
         self.dtype = dtype
         self.tensor_shape = list(tensor_shape)
         self.norm_factors = torch.tensor(self.tensor_shape, dtype=torch.float32).cuda()

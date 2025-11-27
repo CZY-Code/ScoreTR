@@ -10,7 +10,7 @@ from tqdm import tqdm
 import cv2
 from skimage.metrics import peak_signal_noise_ratio, normalized_root_mse, structural_similarity
 
-from EBM.score4Imgc import ScoreTDModel
+from EBM.score4Imgc import ScoreEstimation
 from EBM.energy4Imgc import ScoreMatching
 from utils.ob_data import get_ob_data
 from utils.datautil import read_yuv_video, generate_random_mask_3d, generate_random_mask, load_grayscale_images_from_directory
@@ -197,7 +197,7 @@ def main():
     
     data_loader = get_ob_data(X, ori_mask, batch_size=conf.train.batch_size)
     if args.score:
-        model = ScoreTDModel(
+        model = ScoreEstimation(
             tensor_shape = [H, W, C],
             rank = conf.model.rank,
             h_dim = conf.model.h_dim,

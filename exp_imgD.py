@@ -10,7 +10,7 @@ import cv2
 import json
 from skimage.metrics import peak_signal_noise_ratio, normalized_root_mse, structural_similarity
 
-# from EBM.score4Imgd import ScoreTDModel
+# from EBM.score4Imgd import ScoreEstimation
 from EBM.energy4Imgd import ScoreMatching
 from utils.ob_data import tensor2data
 from utils.datautil import load_grayscale_images_from_directory, read_yuv_video
@@ -212,7 +212,7 @@ def main():
     data_loader = tensor2data(X_noise, batch_size=conf.train.batch_size)
     if args.score:
         raise NotImplementedError
-        # model = ScoreTDModel(
+        # model = ScoreEstimation(
         #     tensor_shape=[H, W, C],
         #     rank=conf.model.rank,
         #     h_dim=conf.model.h_dim,
