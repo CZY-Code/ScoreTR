@@ -8,8 +8,9 @@
 
 ## Overview
 <p align="center">
-<img src="assets/overview.jpg" width=60%>
-<p>
+<img src="assets/overview.png" width=98%>
+</p>
+
 
 ## Installation
 1. Download source code and dataset:
